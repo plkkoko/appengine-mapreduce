@@ -1,4 +1,7 @@
 target/
+*.releaseBackup
+release.properties
+
 build/
 WEB-INF/
 example/
@@ -7,4 +10,5 @@ pipeline-ui/
 sdk/
 static/
 test_lib/
+
 .svn
