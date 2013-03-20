@@ -97,7 +97,7 @@ public class SerializationUtil {
     };
   }
 
-  public static <T> T deserializeFromByteBufferNoHeader(ByteBuffer bytes) throws IOException {
+  public static <T extends Serializable> T deserializeFromByteBufferNoHeader(ByteBuffer bytes) throws IOException {
     ObjectInputStream in =
         new ObjectInputStream(newInputStream(bytes)) {
           @Override protected void readStreamHeader() throws IOException {
@@ -115,11 +115,11 @@ public class SerializationUtil {
     }
   }
 
-  public static <T> T deserializeFromByteArrayNoHeader(byte[] bytes) throws IOException {
+  public static <T extends Serializable> T deserializeFromByteArrayNoHeader(byte[] bytes) throws IOException {
     return deserializeFromByteBufferNoHeader(ByteBuffer.wrap(bytes));
   }
 
-  public static <T> T deserializeFromStream(ObjectInputStream in) throws IOException {
+  public static <T extends Serializable> T deserializeFromStream(ObjectInputStream in) throws IOException {
     try {
       @SuppressWarnings("unchecked")
       T obj = (T) in.readObject();
