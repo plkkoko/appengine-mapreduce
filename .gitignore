@@ -1,1 +1,10 @@
 target/
+build/
+WEB-INF/
+example/
+lib/
+pipeline-ui/
+sdk/
+static/
+test_lib/
+.svn
