@@ -8,18 +8,17 @@ import com.google.appengine.tools.mapreduce.inputs.InputStreamIterator.OffsetRec
 import com.google.common.base.Preconditions;
 import com.google.common.io.CountingInputStream;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
+ * BlobstoreLineInputReader reads files from blobstore one line at a time.
  */
 class BlobstoreInputReader extends InputReader<byte[]> {
 // --------------------------- STATIC FIELDS ---------------------------
 
   private static final long serialVersionUID = -1869136825803030034L;
-  private static final int DEFAULT_BUFFER_SIZE = 10000;
 
 // ------------------------------ FIELDS ------------------------------
 
@@ -33,8 +32,7 @@ class BlobstoreInputReader extends InputReader<byte[]> {
 
 // --------------------------- CONSTRUCTORS ---------------------------
 
-  BlobstoreInputReader(String blobKey, long startOffset, long endOffset, byte terminator)
-      throws IOException {
+  BlobstoreInputReader(String blobKey, long startOffset, long endOffset, byte terminator) {
     this.blobKey = blobKey;
     this.startOffset = startOffset;
     this.endOffset = endOffset;
@@ -64,8 +62,8 @@ class BlobstoreInputReader extends InputReader<byte[]> {
     if (endOffset == startOffset) {
       return 1.0;
     } else {
-      double currentOffset = (double) (offset + input.getCount());
-      return currentOffset / (double) (endOffset - startOffset);
+      double currentOffset = offset + input.getCount();
+      return Math.min(1.0, currentOffset / (endOffset - startOffset));
     }
   }
 
@@ -74,9 +72,7 @@ class BlobstoreInputReader extends InputReader<byte[]> {
     Preconditions.checkState(recordIterator == null, "%s: Already initialized: %s",
         this, recordIterator);
     input = new CountingInputStream(
-        new BufferedInputStream(
-            new BlobstoreInputStream(new BlobKey(blobKey), startOffset + offset),
-            DEFAULT_BUFFER_SIZE));
+            new BlobstoreInputStream(new BlobKey(blobKey), startOffset + offset));
     recordIterator = new InputStreamIterator(input, endOffset - startOffset - offset,
         startOffset != 0L && offset == 0L,
         terminator);

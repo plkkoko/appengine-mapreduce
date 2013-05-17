@@ -58,7 +58,7 @@ public class InputStreamIteratorTest extends TestCase {
 // -------------------------- TEST METHODS --------------------------
 
   /** Tests leading split the size of the record. Should return this and the next record. */
-  public void test_LeadingGreaterThanRecord() throws Exception {
+  public void testLeadingGreaterThanRecord() throws Exception {
     int startIndex = 3;
     long start = byteContentOffsets.get(startIndex);
     test(start, byteContentOffsets.get(startIndex + 1),
@@ -66,26 +66,26 @@ public class InputStreamIteratorTest extends TestCase {
   }
 
   /** Tests leading split smaller than a record. Should return one record. */
-  public void test_LeadingSmallerThanRecord() throws Exception {
+  public void testLeadingSmallerThanRecord() throws Exception {
     int startIndex = 3;
     long start = byteContentOffsets.get(startIndex);
     test(start, start + 2, false, startIndex, startIndex + 1);
   }
 
   /** Tests iterating over all items. */
-  public void test_allItems() throws Exception {
+  public void testAllItems() throws Exception {
     test(0, Long.MAX_VALUE, false, 0, content.size());
   }
 
   /** Tests leading split of length 0 with an empty record. Should return this record. */
-  public void test_leadingWithEmptyRecord() throws Exception {
+  public void testLeadingWithEmptyRecord() throws Exception {
     int startIndex = 4;
     long start = byteContentOffsets.get(startIndex);
     test(start, start, false, startIndex, startIndex + 1);
   }
 
   /** Tests non-leading split the size of the record. Should return next record. */
-  public void test_nonLeadingGreaterThanRecord() throws Exception {
+  public void testNonLeadingGreaterThanRecord() throws Exception {
     int startIndex = 3;
     long start = byteContentOffsets.get(startIndex);
     test(start, byteContentOffsets.get(startIndex + 1),
@@ -93,7 +93,7 @@ public class InputStreamIteratorTest extends TestCase {
   }
 
   /** Tests non-leading split smaller than a record. Should return no records. */
-  public void test_nonLeadingSmallerThanRecord() throws Exception {
+  public void testNonLeadingSmallerThanRecord() throws Exception {
     int startIndex = 3;
     long start = byteContentOffsets.get(startIndex);
     test(start, start + 2, true, startIndex, startIndex);
@@ -103,7 +103,7 @@ public class InputStreamIteratorTest extends TestCase {
    * Tests non-leading split starting at the previous record. Should return this and the next
    * records.
    */
-  public void test_nonLeadingStartingAtRecord() throws Exception {
+  public void testNonLeadingStartingAtRecord() throws Exception {
     int startIndex = 3;
     long start = byteContentOffsets.get(startIndex);
     test(start - 2, byteContentOffsets.get(startIndex + 1),
@@ -114,7 +114,7 @@ public class InputStreamIteratorTest extends TestCase {
    * Tests non-leading split starting at the terminator of the previous record. Should return
    * this and the next records.
    */
-  public void test_nonLeadingStartingAtRecordTerminator() throws Exception {
+  public void testNonLeadingStartingAtRecordTerminator() throws Exception {
     int startIndex = 3;
     long start = byteContentOffsets.get(startIndex);
     test(start - 1, byteContentOffsets.get(startIndex + 1),
@@ -124,7 +124,7 @@ public class InputStreamIteratorTest extends TestCase {
   /**
    * Makes sure that the basic method of offset record pair behave correctly,
    */
-  public void test_offsetRecordPair() throws Exception {
+  public void testOffsetRecordPair() throws Exception {
     byte[] testArray1 = new byte[]{0x20, 0x40};
     // Logically equal to array 1, but not referentially equal
     byte[] testArray1copy = new byte[]{0x20, 0x40};
@@ -151,6 +151,26 @@ public class InputStreamIteratorTest extends TestCase {
     assertEquals(pair11.hashCode(), pair11copy.hashCode());
   }
 
+  public void testExceptionHandling() throws Exception {
+    // Create an input stream than has 2 records in the first 9 bytes and exception while the 3rd
+    // record is read
+    byte[] content = new byte[] {1, 2, 3, 4, 0, 6, 7, 8, 0, 10, 11, 12};
+    InputStreamIterator iterator =
+        new InputStreamIterator(new CountingInputStream(new ExceptionThrowingInputStream(
+            new BufferedInputStream(new NonResetableByteArrayInputStream(content)), 11)),
+            content.length, false, (byte) 0);
+
+    assertTrue(iterator.hasNext());
+    iterator.next();
+    assertTrue(iterator.hasNext());
+    iterator.next();
+    try {
+      assertTrue(iterator.hasNext());
+      fail("Exception was not passed through");
+    } catch (RuntimeException expected) {
+    }
+  }
+
 // -------------------------- INSTANCE METHODS --------------------------
 
   private List<InputStreamIterator.OffsetRecordPair> readPairs(
@@ -165,7 +185,8 @@ public class InputStreamIteratorTest extends TestCase {
   private void test(long start, long end, boolean skipFirstTerminator, int expectedIndexStart,
       int expectedIndexEnd) throws IOException {
     List<InputStreamIterator.OffsetRecordPair> pairs = readPairs(start, end, skipFirstTerminator);
-    assertEquals("pairs between " + start + " and " + end, expectedIndexEnd - expectedIndexStart, pairs.size());
+    assertEquals("pairs between " + start + " and " + end, expectedIndexEnd - expectedIndexStart,
+        pairs.size());
     for (int i = 0; i < pairs.size(); i++) {
       assertEquals(content.get(i + expectedIndexStart), new String(pairs.get(i).getRecord()));
       assertEquals(byteContentOffsets.get(i + expectedIndexStart).longValue(),
@@ -175,19 +196,50 @@ public class InputStreamIteratorTest extends TestCase {
 
 // -------------------------- INNER CLASSES --------------------------
 
-  // Double check that an InputStreamIterator applied to a BufferedInputStream doesn't call
-  // mark() and reset() on the underlying InputStream. Should be obvious, but doesn't hurt to test.
+  /**
+   * Wrapper class for {@code ByteArrayInputStream} to double check that an InputStreamIterator
+   * applied to a BufferedInputStream doesn't call mark() and reset() on the underlying InputStream.
+   * Should be obvious, but doesn't hurt to test.
+   */
   public class NonResetableByteArrayInputStream extends ByteArrayInputStream {
     public NonResetableByteArrayInputStream(byte[] array) {
       super(array);
     }
 
+    @Override
     public void mark(int readAheadLimit) {
       fail("Tried to call mark() on the underlying InputStream");
     }
 
+    @Override
     public void reset() {
       fail("Tried to call reset() on the underlying InputStream");
+    }
+  }
+
+  /**
+   * Wrapper class for InputStream that throws an IOException after the specified number of reads
+   */
+  private static class ExceptionThrowingInputStream extends InputStream {
+
+    private InputStream inputStream;
+    private int readsBetweenExceptions;
+    private int reads;
+
+    public ExceptionThrowingInputStream(InputStream inputStream, int readBetweenExceptions) {
+      this.inputStream = inputStream;
+      this.readsBetweenExceptions = readBetweenExceptions;
+      this.reads = 0;
+    }
+
+    @Override
+    public int read() throws IOException {
+      reads++;
+      if (reads % readsBetweenExceptions == 0) {
+        throw new IOException();
+      } else {
+        return inputStream.read();
+      }
     }
   }
 }
