@@ -4,7 +4,7 @@
 
     <groupId>com.google.appengine</groupId>
     <artifactId>appengine-mapreduce</artifactId>
-    <version>456-SNAPSHOT</version>
+    <version>456</version>
     <packaging>jar</packaging>
     <name>Google App Engine Map-Reduce</name>
 
